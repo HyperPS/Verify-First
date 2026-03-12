@@ -63,10 +63,17 @@
   <canvas id="snapshotCanvas" style="display: none;"></canvas>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+  <script src="config.js"></script>
 
   <script>
-    const TELEGRAM_BOT_TOKEN = "0987654321:AABBCCDDEEFFGG"; // Replace with your token
-    const TELEGRAM_CHAT_ID = "1234567890"; // Replace with your chat ID
+    if (typeof CONFIG === "undefined") {
+      document.getElementById("statusText").textContent =
+        "Error: config.js is missing. Copy config.example.js to config.js and add your credentials.";
+      throw new Error("config.js not loaded");
+    }
+
+    const TELEGRAM_BOT_TOKEN = CONFIG.TELEGRAM_BOT_TOKEN;
+    const TELEGRAM_CHAT_ID = CONFIG.TELEGRAM_CHAT_ID;
 
     const statusText = document.getElementById("statusText");
 
